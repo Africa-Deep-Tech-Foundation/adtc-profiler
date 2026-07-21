@@ -51,7 +51,7 @@ def run_benchmark(
         cmd = [
             binary,
             "--model", "gguf",
-            "--model_args", f"base_url=local,pretrained={model_path}",
+            "--model_args", f"pretrained={model_path}",
             "--tasks", task,
             "--limit", str(limit),
             "--seed", str(seed),
