@@ -82,7 +82,7 @@ $$S_{\text{total}} = 0.50 \cdot S_{\text{acc}} + 0.30 \cdot S_{\text{perf}} + 0.
 
 | Component | Formula / Rule | Details |
 | :--- | :--- | :--- |
-| **$S_{\text{acc}}$ (Accuracy)** | Qualifying score | Based on standard accuracy benchmarks. |
+| **$S_{\text{acc}}$ (Accuracy)** | Qualifying score | Based on model responses to participant-submitted prompts, domain prompts, and hidden prompts supplied by judges. |
 | **$S_{\text{perf}}$ (Throughput)** | `min(TPS / TPS_REFERENCE, 1.0) * 100` | Normalised against `TPS_REFERENCE = 15.0`. |
 | **$S_{\text{eff}}$ (Efficiency)** | `max(0, (RAM_LIMIT_GB - peak_rss_gb) / RAM_LIMIT_GB) * 100` | Normalised against `RAM_LIMIT_GB = 7.0` (8 GB target profile). |
 | **$P_{\text{thermal}}$ (Penalty)** | `10` points deduction | Applied if the CPU throttles or core temp exceeds 85°C. |
