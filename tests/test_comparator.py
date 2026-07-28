@@ -5,7 +5,6 @@ import copy
 import json
 from pathlib import Path
 
-import pytest
 
 from adtc_profiler import comparator
 

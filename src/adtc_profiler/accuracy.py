@@ -48,10 +48,14 @@ def run_benchmark(
     binary = _lm_eval_bin()
     with tempfile.TemporaryDirectory() as tmpdir:
         out_path = Path(tmpdir) / "results.json"
+        # lm-eval's `gguf` model type is an HTTP client for a llama.cpp server
+        # and cannot load a file; the `hf` backend dequantizes the GGUF locally
+        # via transformers, which keeps the eval self-contained.
         cmd = [
             binary,
-            "--model", "gguf",
-            "--model_args", f"pretrained={model_path}",
+            "--model", "hf",
+            "--model_args",
+            f"pretrained={model_path.parent},gguf_file={model_path.name}",
             "--tasks", task,
             "--limit", str(limit),
             "--seed", str(seed),

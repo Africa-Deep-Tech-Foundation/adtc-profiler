@@ -16,8 +16,16 @@ dependencies = [
 
 [project.optional-dependencies]
 # Accuracy benchmarks pull in heavy deps (torch, transformers). Optional so
-# pipeline can be exercised without them during local iteration.
-accuracy = ["lm-eval>=0.4.4"]
+# pipeline can be exercised without them during local iteration. lm-eval no
+# longer depends on torch/transformers itself, and GGUF loading through the
+# hf backend needs the gguf package — declare them all explicitly.
+accuracy = [
+    "lm-eval>=0.4.4",
+    "torch>=2.2",
+    "transformers>=4.45",
+    "accelerate>=0.30",
+    "gguf>=0.10",
+]
 
 [project.scripts]
 adtc-profiler = "adtc_profiler.cli:main"
