@@ -42,17 +42,13 @@ name = "adtc-profiler"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "accelerate" },
     { name = "click" },
+    { name = "gguf" },
     { name = "jsonschema" },
+    { name = "lm-eval" },
     { name = "psutil" },
     { name = "rich" },
-]
-
-[package.optional-dependencies]
-accuracy = [
-    { name = "accelerate" },
-    { name = "gguf" },
-    { name = "lm-eval" },
     { name = "torch" },
     { name = "transformers" },
 ]
@@ -65,15 +61,15 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "accelerate", marker = "extra == 'accuracy'", specifier = ">=0.30" },
+    { name = "accelerate", specifier = ">=0.30" },
     { name = "click", specifier = ">=8.1.0" },
-    { name = "gguf", marker = "extra == 'accuracy'", specifier = ">=0.10" },
+    { name = "gguf", specifier = ">=0.10" },
     { name = "jsonschema", specifier = ">=4.21.0" },
-    { name = "lm-eval", marker = "extra == 'accuracy'", specifier = ">=0.4.4" },
+    { name = "lm-eval", specifier = ">=0.4.4" },
     { name = "psutil", specifier = ">=5.9.0" },
     { name = "rich", specifier = ">=13.0.0" },
-    { name = "torch", marker = "extra == 'accuracy'", specifier = ">=2.2" },
-    { name = "transformers", marker = "extra == 'accuracy'", specifier = ">=4.45" },
+    { name = "torch", specifier = ">=2.2" },
+    { name = "transformers", specifier = ">=4.45" },
 ]
 provides-extras = ["accuracy"]
 

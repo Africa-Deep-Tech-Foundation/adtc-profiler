@@ -12,20 +12,22 @@ dependencies = [
     "psutil>=5.9.0",
     "jsonschema>=4.21.0",
     "rich>=13.0.0",
-]
-
-[project.optional-dependencies]
-# Accuracy benchmarks pull in heavy deps (torch, transformers). Optional so
-# pipeline can be exercised without them during local iteration. lm-eval no
-# longer depends on torch/transformers itself, and GGUF loading through the
-# hf backend needs the gguf package — declare them all explicitly.
-accuracy = [
+    # Accuracy benchmark stack. Heavy (torch alone is hundreds of MB), but
+    # accuracy is 50% of the leaderboard score — the default install must be
+    # able to produce a complete submission. lm-eval no longer depends on
+    # torch/transformers itself, and GGUF loading through the hf backend
+    # needs the gguf package — declare them all explicitly.
     "lm-eval>=0.4.4",
     "torch>=2.2",
     "transformers>=4.45",
     "accelerate>=0.30",
     "gguf>=0.10",
 ]
+
+[project.optional-dependencies]
+# Kept as a no-op alias so `pip install "adtc-profiler[accuracy]"` from older
+# instructions still works now that the accuracy stack ships by default.
+accuracy = []
 
 [project.scripts]
 adtc-profiler = "adtc_profiler.cli:main"

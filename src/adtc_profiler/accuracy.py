@@ -1,6 +1,6 @@
 """Run lm-evaluation-harness against the model and project to the schema's accuracy block.
 
-Heavy deps — install via `uv sync --extra accuracy`. If lm-eval is not available
+The lm-eval stack ships with the default install. If it is somehow unavailable
 or `--skip-accuracy` is passed, returns an empty list (schema-valid: `accuracy: []`).
 """
 from __future__ import annotations
@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -16,19 +17,35 @@ class AccuracyError(RuntimeError):
     """lm-eval-harness failed to produce parseable output."""
 
 
+def _find_lm_eval() -> str | None:
+    """Locate the lm_eval console script.
+
+    Checks next to the current interpreter first — the profiler may be invoked
+    by full path without its environment's bin dir on PATH.
+    """
+    exe_dir = Path(sys.executable).parent
+    for name in ("lm_eval", "lm-eval"):
+        candidate = exe_dir / name
+        if candidate.is_file():
+            return str(candidate)
+        found = shutil.which(name)
+        if found:
+            return found
+    return None
+
+
 def is_available() -> bool:
     """Whether lm_eval is callable in the current environment."""
-    return shutil.which("lm_eval") is not None or shutil.which("lm-eval") is not None
+    return _find_lm_eval() is not None
 
 
 def _lm_eval_bin() -> str:
-    for name in ("lm_eval", "lm-eval"):
-        path = shutil.which(name)
-        if path:
-            return path
+    path = _find_lm_eval()
+    if path:
+        return path
     raise AccuracyError(
-        "lm_eval not found. Install with `uv sync --extra accuracy` or "
-        "`pip install lm-eval`."
+        "lm_eval not found. Reinstall the profiler (`python3 -m pip install "
+        "adtc-profiler`) or `pip install lm-eval`."
     )
 
 

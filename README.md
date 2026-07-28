@@ -16,11 +16,7 @@ python3 -m pip install "git+https://github.com/Africa-Deep-Tech-Foundation/adtc-
 
 > Use `python3 -m pip` (or `pip3`) — macOS and most Linux distros do not ship a bare `pip` command.
 
-To also run the accuracy benchmarks (lm-eval + torch + transformers — a large download), install the `accuracy` extra:
-
-```bash
-python3 -m pip install "adtc-profiler[accuracy] @ git+https://github.com/Africa-Deep-Tech-Foundation/adtc-profiler.git"
-```
+The default install includes the full accuracy benchmark stack (lm-eval, torch, transformers), so one install produces complete, scoreable reports. It is a large download (torch alone is several hundred MB) — run it once on a good connection.
 
 ### System Prerequisites
 To profile model executions correctly, the tool relies on native binaries:

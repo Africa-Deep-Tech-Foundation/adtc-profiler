@@ -117,7 +117,7 @@ def run(
     elif not accuracy.is_available():
         console.print(
             "[yellow]lm_eval not installed — emitting empty accuracy. "
-            "Install with `uv sync --extra accuracy` for real benchmarks.[/yellow]"
+            "Reinstall the profiler to get the accuracy stack.[/yellow]"
         )
         accuracy_block = []
     else:
