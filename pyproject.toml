@@ -3,7 +3,7 @@ name = "adtc-profiler"
 version = "0.1.0"
 description = "ADTC 2026 reference profiler — composes llama-bench, psutil, lm-eval-harness into schema-valid JSON benchmark reports"
 readme = "README.md"
-license = { text = "MIT" }
+license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.11"
 authors = [{ name = "ADTC Working Group" }]
 

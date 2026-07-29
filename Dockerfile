@@ -1,18 +1,18 @@
 # adtc-profiler runtime image.
 #
-# Multi-stage: stage 1 builds llama.cpp from a pinned commit for reproducibility,
-# stage 2 ships only the runtime + the profiler Python package. Aiming for a
-# slim image (<800 MB) so cloud VMs can pull it quickly.
+# Multi-stage: stage 1 builds llama.cpp from a pinned release for
+# reproducibility, stage 2 builds Python wheels (llama-cpp-python compiles
+# from source and needs a C/C++ toolchain), stage 3 ships only the runtime.
 #
-# Build (locally or via Cloud Build):
-#   docker build -t adtc-profiler:latest -f profiler/Dockerfile profiler/
+# Build (from the repo root):
+#   docker build -t adtc-profiler:latest .
 
 # -----------------------------------------------------------------------------
 # Stage 1: build llama.cpp (CPU-only, for parity with Standard Laptop profile)
 # -----------------------------------------------------------------------------
 FROM debian:bookworm-slim AS llama-build
 
-ARG LLAMACPP_REF=master
+ARG LLAMACPP_REF=b10175
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential cmake git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -34,7 +34,25 @@ RUN git clone --depth 1 --branch "${LLAMACPP_REF}" \
     && cmake --build build --config Release --target llama-bench llama-cli llama-server -j2
 
 # -----------------------------------------------------------------------------
-# Stage 2: profiler runtime
+# Stage 2: build Python wheels (llama-cpp-python compiles from source — the
+# slim runtime image has no C/C++ toolchain, so wheels must be built here)
+# -----------------------------------------------------------------------------
+FROM python:3.11-slim AS py-build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential cmake git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Portable CPU build — no -march=native, the wheel must run on any audit VM.
+ENV CMAKE_ARGS="-DGGML_NATIVE=OFF"
+
+WORKDIR /opt/adtc-profiler
+COPY pyproject.toml README.md ./
+COPY src/ ./src/
+RUN pip wheel --no-cache-dir --wheel-dir /wheels .
+
+# -----------------------------------------------------------------------------
+# Stage 3: profiler runtime
 # -----------------------------------------------------------------------------
 FROM python:3.11-slim AS runtime
 
@@ -47,12 +65,10 @@ COPY --from=llama-build /src/llama.cpp/build/bin/llama-bench  /usr/local/bin/
 COPY --from=llama-build /src/llama.cpp/build/bin/llama-cli    /usr/local/bin/
 COPY --from=llama-build /src/llama.cpp/build/bin/llama-server /usr/local/bin/
 
-# Install the profiler package (no editable install — final image)
-WORKDIR /opt/adtc-profiler
-COPY pyproject.toml ./
-COPY README.md ./
-COPY src/ ./src/
-RUN pip install --no-cache-dir .
+# Install the profiler + all deps from the prebuilt wheels (no toolchain here)
+COPY --from=py-build /wheels /wheels
+RUN pip install --no-cache-dir --no-index --find-links=/wheels adtc-profiler \
+    && rm -rf /wheels
 
 WORKDIR /work
 ENTRYPOINT ["adtc-profiler"]
