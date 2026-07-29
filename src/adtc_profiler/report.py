@@ -54,6 +54,22 @@ def assemble(
     return out
 
 
+def validate_submission_block(submission_block: dict) -> None:
+    """Validate just the `submission` section against its subschema.
+
+    Lets the CLI reject broken metadata BEFORE the (minutes-long) benchmark
+    run instead of failing at report-write time.
+    """
+    subschema = load_schema()["properties"]["submission"]
+    try:
+        jsonschema.validate(submission_block, subschema)
+    except jsonschema.ValidationError as e:
+        path = "/".join(str(p) for p in e.absolute_path) or "(root)"
+        raise SchemaValidationError(
+            f"submission metadata invalid at {path}: {e.message}"
+        ) from e
+
+
 def validate(report: dict) -> None:
     """Raise SchemaValidationError if `report` does not match the schema."""
     schema = load_schema()

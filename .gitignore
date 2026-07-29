@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.venv/
+.uv-cache/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+
+# generated reports
+submission.json
+audit.json
+verdict.json

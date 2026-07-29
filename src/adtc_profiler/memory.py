@@ -44,6 +44,7 @@ class MemorySampler:
                 rss = sum(p.memory_info().rss for p in family if p.is_running())
                 vms = sum(p.memory_info().vms for p in family if p.is_running())
             except (psutil.NoSuchProcess, psutil.AccessDenied):
+                self._stop.wait(self.interval_s)  # don't busy-spin on errors
                 continue
             self._samples.append(
                 _Sample(time.monotonic() - t0, rss / (1024**2), vms / (1024**2))

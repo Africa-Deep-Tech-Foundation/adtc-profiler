@@ -3,7 +3,7 @@ name = "adtc-profiler"
 version = "0.1.0"
 description = "ADTC 2026 reference profiler — composes llama-bench, psutil, lm-eval-harness into schema-valid JSON benchmark reports"
 readme = "README.md"
-license = { text = "MIT" }
+license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.11"
 authors = [{ name = "ADTC Working Group" }]
 
@@ -12,12 +12,20 @@ dependencies = [
     "psutil>=5.9.0",
     "jsonschema>=4.21.0",
     "rich>=13.0.0",
+    # Accuracy benchmark stack: accuracy is 50% of the leaderboard score, so
+    # the default install must produce a complete, scoreable report. The model
+    # is evaluated quantized, in-process, via llama-cpp-python (no torch — an FP32
+    # dequantization would blow the 8 GB Standard Laptop profile for 3B+
+    # models). lm-eval's evaluator is torch-free on this path.
+    "lm-eval>=0.4.4",
+    "llama-cpp-python>=0.3.0",
+    "numpy>=1.24",
 ]
 
 [project.optional-dependencies]
-# Accuracy benchmarks pull in heavy deps (torch, transformers). Optional so
-# pipeline can be exercised without them during local iteration.
-accuracy = ["lm-eval>=0.4.4"]
+# Kept as a no-op alias so `pip install "adtc-profiler[accuracy]"` from older
+# instructions still works now that the accuracy stack ships by default.
+accuracy = []
 
 [project.scripts]
 adtc-profiler = "adtc_profiler.cli:main"

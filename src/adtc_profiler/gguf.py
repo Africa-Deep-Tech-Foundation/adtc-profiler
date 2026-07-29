@@ -60,10 +60,46 @@ def _read_value(f, vtype: int):
     if vtype == _VT_ARRAY:
         elem_type = _u32(f)
         count = _u64(f)
+        if elem_type in _SCALAR_SIZES:
+            # Seek past scalar arrays in one hop — element-wise reads on an
+            # adversarial count would loop for a very long time.
+            f.seek(count * _SCALAR_SIZES[elem_type], 1)
+            return None
         for _ in range(count):
             _read_value(f, elem_type)
         return None
     return None  # unknown — will stall; callers should protect with try/except
+
+
+_MAX_TENSORS = 1 << 16
+_MAX_DIMS = 8
+_MAX_DIM = 1 << 40
+
+
+def _sum_tensor_params(f, n_tensors: int) -> int | None:
+    """Sum element counts over the tensor-info section (follows the KV section).
+
+    This is the actual parameter count of the model — unlike the optional
+    `general.parameter_count` KV, the tensor table is always present.
+    """
+    if not 0 < n_tensors <= _MAX_TENSORS:
+        return None
+    total = 0
+    for _ in range(n_tensors):
+        _read_string(f)                    # tensor name
+        n_dims = _u32(f)
+        if not 0 < n_dims <= _MAX_DIMS:
+            return None
+        count = 1
+        for _ in range(n_dims):
+            dim = _u64(f)
+            if not 0 < dim <= _MAX_DIM:
+                return None
+            count *= dim
+        _u32(f)                            # ggml type
+        _u64(f)                            # data offset
+        total += count
+    return total
 
 
 def extract_metadata(model_path: Path) -> dict:
@@ -79,9 +115,11 @@ def extract_metadata(model_path: Path) -> dict:
             if f.read(4) != _MAGIC:
                 return {}
             version = _u32(f)
-            if version not in (1, 2, 3):
+            # v1 uses 32-bit counts/lengths — this parser reads the v2/v3
+            # 64-bit layout, so accepting v1 would yield misaligned garbage.
+            if version not in (2, 3):
                 return {}
-            _u64(f)           # n_tensors (skip)
+            n_tensors = _u64(f)
             n_kv = _u64(f)
 
             result: dict = {}
@@ -97,8 +135,13 @@ def extract_metadata(model_path: Path) -> dict:
                 elif key.endswith(".context_length"):
                     result["context_length"] = value
 
-                if len(result) == 3:
-                    break
+            if result.get("params_count") is None:
+                # `general.parameter_count` is optional and usually absent
+                # (the reference SmolLM2 fixture lacks it). Fall back to
+                # summing the tensor table so the fraud check has real data.
+                params = _sum_tensor_params(f, n_tensors)
+                if params is not None:
+                    result["params_count"] = params
 
         return result
     except Exception:
@@ -120,11 +163,17 @@ def parse_parameter_estimate(estimate: str) -> int | None:
         return None
 
 
-def fraud_check(claimed_estimate: str, actual_params: int | None) -> bool:
-    """Return True if measured params are within 20% of the claimed estimate."""
+def fraud_check(claimed_estimate: str, actual_params: int | None) -> bool | None:
+    """Two-sided check: measured params within ±15% of the claimed estimate.
+
+    Returns None when the check cannot be performed (no measured count, or an
+    unparseable claim) — an unknown must not masquerade as a passed check.
+    ±15% absorbs labeling conventions ("7B" models range roughly 6.7–7.3B);
+    quantization does not change the parameter count.
+    """
     if actual_params is None:
-        return True  # can't check — give benefit of the doubt
+        return None
     claimed = parse_parameter_estimate(claimed_estimate)
-    if claimed is None:
-        return True
-    return actual_params <= claimed * 1.20
+    if claimed is None or claimed <= 0:
+        return None
+    return claimed * 0.85 <= actual_params <= claimed * 1.15

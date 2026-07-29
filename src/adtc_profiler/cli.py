@@ -86,7 +86,10 @@ def run(
         sys.exit(2)
 
     submission_meta = json.loads(metadata_path.read_text())
-    runtime_meta = submission_meta.get("_runtime", {})
+    runtime_meta = submission_meta.get("_runtime") or {}
+    if not isinstance(runtime_meta, dict):
+        console.print(f"[red]metadata _runtime must be an object, got {type(runtime_meta).__name__}[/red]")
+        sys.exit(2)
     model_path = submission / runtime_meta.get("model_path", "model.gguf")
     if not model_path.exists():
         console.print(
@@ -98,6 +101,14 @@ def run(
     # Schema is strict (additionalProperties: false). Strip the operational
     # `_runtime` block before assembling the submission section of the report.
     submission_block = {k: v for k, v in submission_meta.items() if not k.startswith("_")}
+
+    # Validate metadata BEFORE the benchmark run — a stray or missing field
+    # must not waste a full profiling pass before failing at report-write time.
+    try:
+        report.validate_submission_block(submission_block)
+    except report.SchemaValidationError as e:
+        console.print(f"[red]{e}[/red]")
+        sys.exit(2)
 
     measured_on = "audit_cloud_vm" if mode == "audit" else "participant_laptop"
     console.print(f"[bold]adtc-profiler[/bold] mode={mode} model={model_path.name}")
@@ -115,18 +126,39 @@ def run(
         console.print("→ skipping accuracy (--skip-accuracy)")
         accuracy_block: list[dict] = []
     elif not accuracy.is_available():
+        if mode == "audit":
+            # Accuracy is 50% of the score — an audit must never silently
+            # produce a report with no accuracy data and exit 0.
+            console.print(
+                "[red]accuracy stack unavailable in audit mode. Fix the "
+                "environment or pass --skip-accuracy explicitly.[/red]"
+            )
+            sys.exit(4)
         console.print(
-            "[yellow]lm_eval not installed — emitting empty accuracy. "
-            "Install with `uv sync --extra accuracy` for real benchmarks.[/yellow]"
+            "[yellow]accuracy stack not installed — emitting empty accuracy. "
+            "Reinstall the profiler to get it; your submission will be scored "
+            "0 on accuracy without it.[/yellow]"
         )
         accuracy_block = []
     else:
         console.print(f"→ running lm_eval task={accuracy_task} limit={accuracy_limit}…")
-        accuracy_block = [
-            accuracy.run_benchmark(
-                model_path, task=accuracy_task, limit=accuracy_limit, seed=seed
+        try:
+            accuracy_block = [
+                accuracy.run_benchmark(
+                    model_path, task=accuracy_task, limit=accuracy_limit, seed=seed
+                )
+            ]
+        except accuracy.AccuracyError as e:
+            if mode == "audit":
+                console.print(f"[red]accuracy stage failed in audit mode: {e}[/red]")
+                sys.exit(4)
+            # Participant mode: preserve the completed throughput/memory work;
+            # an accuracy failure degrades to an empty block with a loud warning.
+            console.print(
+                f"[yellow]accuracy stage failed ({e}) — emitting empty "
+                f"accuracy. Fix and re-run before submitting.[/yellow]"
             )
-        ]
+            accuracy_block = []
 
     environment_block = env.capture(measured_on)
     reproducibility_block = reproducibility.capture(
@@ -219,13 +251,22 @@ def compare(submission_path: Path, audit_path: Path, output_path: Path | None, n
             console.print(f"  - {n}")
 
     if output_path:
-        output_path.write_text(json.dumps(verdict.to_dict(), indent=2, ensure_ascii=False) + "\n")
-        console.print(f"\n[green]✓[/green] wrote {output_path}")
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(
+                json.dumps(verdict.to_dict(), indent=2, ensure_ascii=False) + "\n"
+            )
+            console.print(f"\n[green]✓[/green] wrote {output_path}")
+        except OSError as e:
+            # Never let an output-write problem corrupt the verdict exit code.
+            console.print(f"\n[red]could not write verdict file: {e}[/red]")
 
+    # Exit-code contract: 0 pass, 1 fail, 3 flag. (3, not 2 — click reserves
+    # exit code 2 for CLI usage errors, so 2 would be ambiguous to callers.)
     if verdict.verdict == "fail":
         sys.exit(1)
     if verdict.verdict == "flag":
-        sys.exit(2)
+        sys.exit(3)
 
 
 if __name__ == "__main__":

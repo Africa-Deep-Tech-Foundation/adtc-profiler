@@ -47,6 +47,13 @@ def run_llama_bench(
         "-m", str(model_path),
         "-p", str(n_prompt),
         "-n", str(n_gen),
+        # Pin to CPU: llama-bench defaults to full GPU offload, so an
+        # unpinned participant run on an Apple-Silicon/NVIDIA laptop records
+        # GPU-accelerated numbers that can never reconcile with the CPU-only
+        # audit VM (measured >10x on prompt processing) — an automatic
+        # compare failure for participants who did nothing wrong. The
+        # challenge target is commodity CPU.
+        "-ngl", "0",
         "--output", "json",
     ]
     if n_threads is not None:

@@ -7,5 +7,5 @@ schema-valid JSON benchmark report. Same tool runs in two modes:
 """
 
 __version__ = "0.1.0"
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.1.0"
 PROFILER_VERSION = f"adtc-profiler {__version__}"

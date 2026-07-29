@@ -11,8 +11,12 @@ The tool measures local GGUF models running through `llama.cpp` and emits schema
 Install the profiler directly from GitHub using `pip` or `uv`:
 
 ```bash
-pip install "git+https://github.com/Africa-Deep-Tech-Foundation/adtc-profiler.git"
+python3 -m pip install "git+https://github.com/Africa-Deep-Tech-Foundation/adtc-profiler.git"
 ```
+
+> Use `python3 -m pip` (or `pip3`) — macOS and most Linux distros do not ship a bare `pip` command.
+
+The default install includes the full accuracy benchmark stack (lm-eval + llama-cpp-python), so one install produces complete, scoreable reports. Note that `llama-cpp-python` compiles from source on most platforms — you need a C/C++ toolchain (Xcode Command Line Tools on macOS, `build-essential` on Ubuntu) and the install can take a few minutes.
 
 ### System Prerequisites
 To profile model executions correctly, the tool relies on native binaries:
@@ -25,16 +29,17 @@ To profile model executions correctly, the tool relies on native binaries:
 
 The profiler runs in two primary modes:
 
-### 1. Participant Mode (Local Self-Check)
-Used by participants to smoke-test their submission locally. It runs the throughput bench and resource sampling, but skips accuracy evaluations.
+### 1. Participant Mode (Gate 1)
+Run on your own laptop to produce the `submission.json` you ship. The full run includes the accuracy benchmark (accuracy is 50% of your score):
 
 ```bash
 adtc-profiler run \
   --submission /path/to/your-submission-repo \
   --mode participant \
-  --output submission.json \
-  --skip-accuracy
+  --output submission.json
 ```
+
+While iterating, add `--skip-accuracy` to skip the accuracy stage for a faster smoke-test loop — but your final submitted report should come from a full run.
 
 ### 2. Audit Mode (Evaluation Sandbox)
 Used by the ADTC evaluation orchestrator inside secure cloud VMs. 
@@ -68,9 +73,11 @@ To ensure fairness across differing environments, the comparison engine tolerate
 | `throughput.first_token_latency_ms` | ±25% | Flags if exceeded; fails if >50% |
 
 The comparison command yields one of three verdicts:
-- **`pass`**: Model telemetry matches within tolerance limits.
-- **`flag`**: Noticeable variance observed; marked for manual judge review.
-- **`fail`**: Out-of-bounds telemetry, mismatched team IDs, or schema violations.
+- **`pass`** (exit code 0): Model telemetry matches within tolerance limits.
+- **`flag`** (exit code 3): Noticeable variance observed; marked for manual judge review.
+- **`fail`** (exit code 1): Out-of-bounds telemetry (>50%), zero/missing values, mismatched team IDs, wrong `measured_on` environment, or schema violations.
+
+(Exit code 2 is reserved by the CLI framework for usage errors.)
 
 ---
 
@@ -106,8 +113,7 @@ docker run --rm --memory=7.5g \
   adtc-profiler:latest run \
   --submission /submission \
   --mode audit \
-  --output /artifacts/audit.json \
-  --skip-accuracy
+  --output /artifacts/audit.json
 ```
 
 ---
@@ -135,12 +141,15 @@ To uninstall the profiler package and clean up all generated reports or caches:
 
 ```bash
 # 1. Uninstall the package
-pip uninstall -y adtc-profiler
+python3 -m pip uninstall -y adtc-profiler
 
 # 2. Delete generated JSON reports
 rm -f submission.json audit.json verdict.json
 
-# 3. Clean local development caches (if cloned)
+# 3. Remove the benchmark dataset cache (downloaded on first accuracy run)
+rm -rf ~/.cache/huggingface/datasets
+
+# 4. Clean local development caches (if cloned)
 rm -rf .venv/ .uv-cache/ .pytest_cache/ .ruff_cache/
 ```
 
