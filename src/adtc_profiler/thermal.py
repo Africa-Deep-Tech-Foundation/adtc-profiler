@@ -134,11 +134,11 @@ class ThermalSampler:
         idx = max(0, int(len(sorted_cpu) * 0.99) - 1)
         p99 = sorted_cpu[idx]
         peak_temp = max(self._temp_samples) if self._temp_samples else None
-        # "throttled" detection requires kernel events; best-effort flag based on
-        # observed temp crossing a conservative threshold. Real laptops emit
-        # /sys/devices/system/cpu/cpufreq/policy*/cpuinfo_max_freq drops; revisit
-        # in Phase 2 once we have a real audit VM to calibrate against.
-        throttled = bool(peak_temp and peak_temp >= 95.0)
+        # "throttled" detection requires kernel events; best-effort flag based
+        # on observed temp crossing the published penalty threshold (85°C —
+        # must match the scoring rule, which applies P_thermal above 85°C).
+        # Real throttle-event detection is deferred to Phase 2.
+        throttled = bool(peak_temp and peak_temp >= 85.0)
         return {
             "cpu_percent_p99": round(min(100.0, p99), 1),
             "core_temp_c_peak": round(peak_temp, 1) if peak_temp is not None else None,
