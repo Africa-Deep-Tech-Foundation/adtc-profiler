@@ -12,16 +12,14 @@ dependencies = [
     "psutil>=5.9.0",
     "jsonschema>=4.21.0",
     "rich>=13.0.0",
-    # Accuracy benchmark stack. Heavy (torch alone is hundreds of MB), but
-    # accuracy is 50% of the leaderboard score — the default install must be
-    # able to produce a complete submission. lm-eval no longer depends on
-    # torch/transformers itself, and GGUF loading through the hf backend
-    # needs the gguf package — declare them all explicitly.
+    # Accuracy benchmark stack: accuracy is 50% of the leaderboard score, so
+    # the default install must produce a complete, scoreable report. The model
+    # is evaluated quantized, in-process, via llama-cpp-python (no torch — an FP32
+    # dequantization would blow the 8 GB Standard Laptop profile for 3B+
+    # models). lm-eval's evaluator is torch-free on this path.
     "lm-eval>=0.4.4",
-    "torch>=2.2",
-    "transformers>=4.45",
-    "accelerate>=0.30",
-    "gguf>=0.10",
+    "llama-cpp-python>=0.3.0",
+    "numpy>=1.24",
 ]
 
 [project.optional-dependencies]

@@ -16,7 +16,7 @@ python3 -m pip install "git+https://github.com/Africa-Deep-Tech-Foundation/adtc-
 
 > Use `python3 -m pip` (or `pip3`) — macOS and most Linux distros do not ship a bare `pip` command.
 
-The default install includes the full accuracy benchmark stack (lm-eval, torch, transformers), so one install produces complete, scoreable reports. It is a large download (torch alone is several hundred MB) — run it once on a good connection.
+The default install includes the full accuracy benchmark stack (lm-eval + llama-cpp-python), so one install produces complete, scoreable reports. Note that `llama-cpp-python` compiles from source on most platforms — you need a C/C++ toolchain (Xcode Command Line Tools on macOS, `build-essential` on Ubuntu) and the install can take a few minutes.
 
 ### System Prerequisites
 To profile model executions correctly, the tool relies on native binaries:
