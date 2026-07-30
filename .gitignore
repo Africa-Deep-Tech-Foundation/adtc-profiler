@@ -12,3 +12,6 @@ build/
 submission.json
 audit.json
 verdict.json
+
+# example submission model (downloaded, ~100 MB)
+examples/demo-submission/model/
