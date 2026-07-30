@@ -27,6 +27,8 @@ To profile model executions correctly, the tool relies on native binaries:
 
 ## 🧪 Usage
 
+A complete working example submission (metadata + model download script) lives in [`examples/demo-submission/`](examples/demo-submission/) — copy it to get started.
+
 The profiler runs in two primary modes:
 
 ### 1. Participant Mode (Gate 1)
