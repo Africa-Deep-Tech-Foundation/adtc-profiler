@@ -10,13 +10,42 @@ gives one prompt-processing row (n_prompt=512, n_gen=0) and one generation row
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
 
+import psutil
+
 
 class LlamaBenchError(RuntimeError):
     """llama-bench failed to produce parseable output."""
+
+
+def detect_physical_cpu_count() -> int:
+    """Physical core count of the machine actually running this benchmark — not logical/
+    hyperthreaded count. Without this, measure() left -t unset, so llama-bench fell back to
+    its own internal default thread count with no relationship to the real hardware; on at
+    least one real judging machine that landed on something inefficient enough that a
+    `-p 512 -n 128` throughput run didn't finish inside the worker's 30-minute subprocess
+    timeout. Every machine now benchmarks at its own true physical-core count, so results stay
+    meaningful and comparable without hardcoding a single number that's wrong for whatever
+    hardware actually executes a given run.
+
+    psutil.cpu_count(logical=False) can return None on some exotic platforms/containers where
+    physical topology isn't queryable — os.cpu_count() (logical count) is a safe fallback that's
+    still far better than an unconfigured, unpredictable llama-bench default.
+    """
+    # The private hardware worker computes topology once and passes it through so the profiler,
+    # benchmark shim, and Phase 6 inference all use the same host-core decision.
+    configured = os.environ.get("ADTC_CPU_THREADS", "").strip()
+    if configured.isdigit() and int(configured) > 0:
+        return int(configured)
+
+    physical = psutil.cpu_count(logical=False)
+    if isinstance(physical, int) and physical > 0:
+        return physical
+    return max(1, os.cpu_count() or 1)
 
 
 def _find_llama_bench() -> str:
@@ -76,14 +105,20 @@ def run_llama_bench(
         ) from e
 
 
-def measure(model_path: Path, *, seed: int = 42) -> dict:
+def measure(model_path: Path, *, seed: int = 42, n_threads: int | None = None) -> dict:
     """Run llama-bench and project to the schema's `throughput` block.
 
     first_token_latency_ms is approximated as 1000/pp_rate (the time to process
     a single prompt token at the measured prompt-processing rate). This is an
     honest approximation; the spec's ±25% throughput tolerance applies.
+
+    n_threads defaults to this machine's own physical core count (detect_physical_cpu_count())
+    rather than leaving it unset — see that function's docstring for why an unconfigured
+    llama-bench default is unsafe. Callers can still override explicitly if ever needed.
     """
-    rows = run_llama_bench(model_path, seed=seed)
+    if n_threads is None:
+        n_threads = detect_physical_cpu_count()
+    rows = run_llama_bench(model_path, n_threads=n_threads, seed=seed)
     if not rows:
         raise LlamaBenchError("llama-bench returned no rows")
 
@@ -112,4 +147,5 @@ def measure(model_path: Path, *, seed: int = 42) -> dict:
         "first_token_latency_ms": round(first_token_ms, 2),
         "prompt_tokens": int(pp_row.get("n_prompt", 0)) if pp_row else 0,
         "generated_tokens": int(tg_row.get("n_gen", 0)),
+        "threads_used": n_threads,
     }
