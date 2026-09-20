@@ -94,6 +94,77 @@ def test_assemble_minimal_valid_report() -> None:
     report.validate(r)
 
 
+def _minimal_model_block() -> dict:
+    return {
+        "name": "stub",
+        "runtime": "llama.cpp",
+        "quantization": "Q4_K_M",
+        "parameters_estimate": "1B",
+        "packaging": "docker_image",
+    }
+
+
+def test_base_model_commit_sha_is_accepted_when_present() -> None:
+    """Gate 2 asks teams to add base_model_commit_sha to metadata.json for provenance.
+    Regression guard for the incident where adding this field to a team's real metadata.json
+    tripped additionalProperties:false and aborted the profiler run before any benchmark —
+    the field must validate, not reject the run outright."""
+    submission_block = {
+        "team_id": "test-team",
+        "domain": "coding_assistants",
+        "language_scope": ["en"],
+        "african_alpha_claim": False,
+        "budget_laptop_claim": True,
+        "submitter": {
+            "name": "Efe Mensah",
+            "email": "efe@deeptech.africa",
+            "github_handle": "efemensah",
+        },
+        "cross_disciplinary_pairing": {
+            "discipline": "test",
+            "load_bearing": False,
+            "description": "test fixture",
+        },
+        "test_prompts": [
+            {"prompt_id": "tp_001", "prompt": "stub 1"},
+            {"prompt_id": "tp_002", "prompt": "stub 2"},
+        ],
+        "model": {
+            **_minimal_model_block(),
+            "base_model_commit_sha": "3fb3c9d4b0e6",
+        },
+    }
+    report.validate_submission_block(submission_block)
+
+
+def test_base_model_commit_sha_stays_optional() -> None:
+    """A submission that omits base_model_commit_sha entirely must still validate — it is a
+    Gate 2 checklist item, not an automated gate, so its absence must never block a run."""
+    submission_block = {
+        "team_id": "test-team",
+        "domain": "coding_assistants",
+        "language_scope": ["en"],
+        "african_alpha_claim": False,
+        "budget_laptop_claim": True,
+        "submitter": {
+            "name": "Efe Mensah",
+            "email": "efe@deeptech.africa",
+            "github_handle": "efemensah",
+        },
+        "cross_disciplinary_pairing": {
+            "discipline": "test",
+            "load_bearing": False,
+            "description": "test fixture",
+        },
+        "test_prompts": [
+            {"prompt_id": "tp_001", "prompt": "stub 1"},
+            {"prompt_id": "tp_002", "prompt": "stub 2"},
+        ],
+        "model": _minimal_model_block(),
+    }
+    report.validate_submission_block(submission_block)
+
+
 def test_missing_required_field_raises() -> None:
     """A report missing a required sub-field must raise SchemaValidationError."""
     bogus = {

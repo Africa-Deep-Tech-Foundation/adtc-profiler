@@ -169,6 +169,11 @@
                 "docker_build_from_repo",
                 "binary_bundle"
               ]
+            },
+            "base_model_commit_sha": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{7,40}$",
+              "description": "Gate 2 provenance: the exact commit/revision of the BASE model's source repo (e.g. the Hugging Face repo commit) this submission was built from. Distinct from reproducibility.git_commit_sha, which is auto-captured from this submission's own repo and must not be hand-edited. Optional so a missing value never blocks a benchmark run; Gate 2 completeness is checked separately against the submission checklist."
             }
           }
         }
@@ -232,6 +237,10 @@
         "generated_tokens": {
           "type": "integer",
           "minimum": 0
+        },
+        "threads_used": {
+          "type": "integer",
+          "minimum": 1
         }
       }
     },
