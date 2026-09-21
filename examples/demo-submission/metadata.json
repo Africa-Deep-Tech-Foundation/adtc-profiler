@@ -29,8 +29,13 @@
     "runtime": "llama.cpp",
     "quantization": "GGUF Q4_K_M",
     "parameters_estimate": "135M",
-    "packaging": "binary_bundle",
-    "base_model_commit_sha": "3fb3c9d4b0e6c4c2b8a1e2f7d5c6a9b1e8f4d2c0"
+    "packaging": "binary_bundle"
+  },
+  "provenance": {
+    "base_model_source": "huggingface:HuggingFaceTB/SmolLM2-135M-Instruct",
+    "base_model_commit_sha": "3fb3c9d4b0e6c4c2b8a1e2f7d5c6a9b1e8f4d2c0",
+    "fine_tuning_method": "none",
+    "training_datasets": []
   },
   "_runtime": {
     "model_path": "model/SmolLM2-135M-Instruct-Q4_K_M.gguf"

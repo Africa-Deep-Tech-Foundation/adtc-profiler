@@ -169,11 +169,38 @@
                 "docker_build_from_repo",
                 "binary_bundle"
               ]
+            }
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Gate 2 disclosure of where this submission's model actually came from. Optional at the schema level so a missing or partial provenance object never blocks a benchmark run — Gate 2 completeness is checked manually against the submission checklist, not enforced here. Distinct from reproducibility.git_commit_sha (auto-captured from this submission's own repo) and from download_model.sh's MODEL_URL commit pin (the exact downloaded file, which may differ from the upstream base model's own commit once a team hosts their own fine-tuned copy).",
+          "properties": {
+            "base_model_source": {
+              "type": "string",
+              "minLength": 1
             },
             "base_model_commit_sha": {
               "type": "string",
-              "pattern": "^[a-f0-9]{7,40}$",
-              "description": "Gate 2 provenance: the exact commit/revision of the BASE model's source repo (e.g. the Hugging Face repo commit) this submission was built from. Distinct from reproducibility.git_commit_sha, which is auto-captured from this submission's own repo and must not be hand-edited. Optional so a missing value never blocks a benchmark run; Gate 2 completeness is checked separately against the submission checklist."
+              "pattern": "^[a-f0-9]{7,40}$"
+            },
+            "fine_tuning_method": {
+              "type": "string",
+              "enum": [
+                "none",
+                "prompt_engineering",
+                "lora",
+                "qlora",
+                "full_fine_tune"
+              ]
+            },
+            "training_datasets": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
             }
           }
         }

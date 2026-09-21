@@ -104,43 +104,8 @@ def _minimal_model_block() -> dict:
     }
 
 
-def test_base_model_commit_sha_is_accepted_when_present() -> None:
-    """Gate 2 asks teams to add base_model_commit_sha to metadata.json for provenance.
-    Regression guard for the incident where adding this field to a team's real metadata.json
-    tripped additionalProperties:false and aborted the profiler run before any benchmark —
-    the field must validate, not reject the run outright."""
-    submission_block = {
-        "team_id": "test-team",
-        "domain": "coding_assistants",
-        "language_scope": ["en"],
-        "african_alpha_claim": False,
-        "budget_laptop_claim": True,
-        "submitter": {
-            "name": "Efe Mensah",
-            "email": "efe@deeptech.africa",
-            "github_handle": "efemensah",
-        },
-        "cross_disciplinary_pairing": {
-            "discipline": "test",
-            "load_bearing": False,
-            "description": "test fixture",
-        },
-        "test_prompts": [
-            {"prompt_id": "tp_001", "prompt": "stub 1"},
-            {"prompt_id": "tp_002", "prompt": "stub 2"},
-        ],
-        "model": {
-            **_minimal_model_block(),
-            "base_model_commit_sha": "3fb3c9d4b0e6",
-        },
-    }
-    report.validate_submission_block(submission_block)
-
-
-def test_base_model_commit_sha_stays_optional() -> None:
-    """A submission that omits base_model_commit_sha entirely must still validate — it is a
-    Gate 2 checklist item, not an automated gate, so its absence must never block a run."""
-    submission_block = {
+def _minimal_submission_block(**overrides: object) -> dict:
+    base = {
         "team_id": "test-team",
         "domain": "coding_assistants",
         "language_scope": ["en"],
@@ -162,7 +127,46 @@ def test_base_model_commit_sha_stays_optional() -> None:
         ],
         "model": _minimal_model_block(),
     }
+    base.update(overrides)
+    return base
+
+
+def test_provenance_is_accepted_when_present() -> None:
+    """Gate 2 asks teams to add a provenance object to metadata.json for model disclosure.
+    Regression guard for the incident where adding a new top-level field to a team's real
+    metadata.json tripped additionalProperties:false and aborted the profiler run before any
+    benchmark ran — the object must validate, not reject the run outright."""
+    submission_block = _minimal_submission_block(
+        provenance={
+            "base_model_source": "huggingface:org/base-model",
+            "base_model_commit_sha": "3fb3c9d4b0e6",
+            "fine_tuning_method": "lora",
+            "training_datasets": ["huggingface:org/some-dataset"],
+        }
+    )
     report.validate_submission_block(submission_block)
+
+
+def test_provenance_stays_optional() -> None:
+    """A submission that omits provenance entirely must still validate — it is a Gate 2
+    checklist item, not an automated gate, so its absence must never block a run."""
+    report.validate_submission_block(_minimal_submission_block())
+
+
+def test_provenance_rejects_an_unknown_fine_tuning_method() -> None:
+    submission_block = _minimal_submission_block(
+        provenance={"fine_tuning_method": "hand_edited_weights"}
+    )
+    with pytest.raises(report.SchemaValidationError):
+        report.validate_submission_block(submission_block)
+
+
+def test_provenance_rejects_non_string_training_datasets() -> None:
+    submission_block = _minimal_submission_block(
+        provenance={"training_datasets": [{"name": "not-a-plain-string"}]}
+    )
+    with pytest.raises(report.SchemaValidationError):
+        report.validate_submission_block(submission_block)
 
 
 def test_missing_required_field_raises() -> None:
